@@ -1,0 +1,9 @@
+# Compiled C files
+*.o
+*.out
+
+# macOS
+.DS_Store
+
+# VS Code
+.vscode/
