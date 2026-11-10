@@ -2,8 +2,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <ctype.h>
-
-#include "string.c"
+#include <errno.h>
 
 typedef enum Token_Kind{
     TOKEN_KEYWORD,
@@ -58,7 +57,24 @@ typedef enum Keyword{
     KEYWORD_FALSE
 } Keyword;
 
+const char *Keyword_Name(Keyword keyword){
+    switch (keyword){
+        case KEYWORD_FN: return "fn";
+        case KEYWORD_LET: return "let";
+        case KEYWORD_SET: return "set";
+        case KEYWORD_IF: return "if";
+        case KEYWORD_WHILE: return "while";
+        case KEYWORD_CALL: return "call";
+        case KEYWORD_RETURN: return "return";
+        case KEYWORD_TRUE: return "true";
+        case KEYWORD_FALSE: return "false";
+        default: return "unknown keyword";
+    }
+}
+
 typedef enum Type{
+    TYPE_NONE,
+
     TYPE_INT,
     TYPE_STR,
     TYPE_BOOL
@@ -223,11 +239,19 @@ Token Lexer_Num(Lexer *lexer){
         .data = lexer->source.data+start, 
     };
 
+    errno = 0;
+    long value = strtol(str.data, NULL, 10);
+    if (errno == ERANGE){
+        fprintf(stderr, "%s:%ld:%d: Integer literal out of range.\n",
+                start_loc.file_name, start_loc.line, start_loc.col);
+        exit(1);
+    }
+
     Token token ={
         .token_kind = TOKEN_INTEGER,
         .source = str,
         .loc = start_loc,
-        .token_data.value = strtol(str.data, NULL, 10)
+        .token_data.value = value
     };
     return token;
 }
@@ -448,17 +472,117 @@ void Token_Append(Token_Array *arr, Token token){
     arr->count++;
 }
 
+void Print_Token_Kind(Token_Kind kind){
+    switch(kind){
+        case TOKEN_KEYWORD:
+            printf("%s", "KEYWORD");
+            break;
+        case TOKEN_IDENT:
+            printf("%s", "IDENTIFIER");
+            break;
+        case TOKEN_TYPE:
+            printf("%s", "TYPE");
+            break;
+        case TOKEN_INTEGER:
+            printf("%s", "INTEGER");
+            break;
+        case TOKEN_STRING:
+            printf("%s", "STRING");
+            break;
+        case TOKEN_ARROW:
+            printf("->");
+            break;
+        case TOKEN_OPEN_PAREN:
+            printf("(");
+            break;
+        case TOKEN_CLOSE_PAREN:
+            printf(")");
+            break;
+        case TOKEN_OPEN_BRACE:
+            printf("{");
+            break;
+        case TOKEN_CLOSE_BRACE:
+            printf("}");
+            break;
+        case TOKEN_OPEN_BRACKET:
+            printf("[");
+            break;
+        case TOKEN_CLOSE_BRACKET:
+            printf("]");
+            break;
+        case TOKEN_PLUS:
+            printf("+");
+            break;
+        case TOKEN_MINUS:
+            printf("-");
+            break;
+        case TOKEN_MULTIPLY:
+            printf("*");
+            break;
+        case TOKEN_DIVIDE:
+            printf("/");
+            break;
+        case TOKEN_MODULO:
+            printf("%%");
+            break;
+        case TOKEN_BITWISE_AND:
+            printf("&");
+            break;
+        case TOKEN_BITWISE_OR:
+            printf("|");
+            break;
+        case TOKEN_BITWISE_XOR:
+            printf("^");
+            break;
+        case TOKEN_BITWISE_NOT:
+            printf("~");
+            break;
+        case TOKEN_LOGICAL_AND:
+            printf("&&");
+            break;
+        case TOKEN_LOGICAL_OR:
+            printf("||");
+            break;
+        case TOKEN_LOGICAL_NOT:
+            printf("!");
+            break;
+        case TOKEN_EQUAL:
+            printf("==");
+            break;
+        case TOKEN_NOT_EQUAL:
+            printf("!=");
+            break;
+        case TOKEN_LESS:
+            printf("<");
+            break;
+        case TOKEN_GREATER:
+            printf(">");
+            break;
+        case TOKEN_LESS_EQUAL:
+            printf("<=");
+            break;
+        case TOKEN_GREATER_EQUAL:
+            printf(">=");
+            break;
+        case TOKEN_COMMA:
+            printf(",");
+            break;
+        case TOKEN_DOT:
+            printf(".");
+            break;
+        case TOKEN_COLON:
+            printf(":");
+            break;
+        case TOKEN_EOF:
+            printf("EOF");
+            break;
+        default:
+            printf("OTHER");
+            break;
+    }
+}
 
 void Print_Token(Token token){
-    const char *name = strrchr(token.loc.file_name, '/');
-    int printed = printf("%s:%ld:%d ",name+1, token.loc.line, token.loc.col);
-    int padding = 24 - printed;
-    if (padding < 1) {
-        padding = 1;
-    }
-
-    printf("%*s", padding, "");
-
     switch(token.token_kind){
         case TOKEN_KEYWORD:
             printf("%-15s %.*s\n", "KEYWORD", Print_String(token.source));
@@ -574,7 +698,17 @@ void Print_Token_Array(Token_Array *arr){
         exit(1);
     }
     for (int i = 0; i < arr->count; i++){
-        Print_Token(arr->items[i]);
+        Token token = arr->items[i];
+        const char *slash = strrchr(token.loc.file_name, '/');
+        const char *name = slash != NULL ? slash + 1 : token.loc.file_name;
+        int printed = printf("%s:%ld:%d ", name, token.loc.line, token.loc.col);
+        int padding = 24 - printed;
+        if (padding < 1) {
+            padding = 1;
+        }
+
+        printf("%*s", padding, "");
+        Print_Token(token);
     }
 }
 

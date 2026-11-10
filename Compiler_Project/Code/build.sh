@@ -1,7 +1,8 @@
 #!/bin/bash
 
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")" || exit 1
-gcc -Wall -ggdb ../Code/test_lexer.c -o test_lexer.out
+mkdir -p ../build || exit 1
+gcc -Wall -ggdb ../Code/main.c -o ../build/jive 
 ret_val=$?
 if [ $ret_val -ne 0 ]; then
 	echo ERROR: Failed to build
@@ -12,10 +13,10 @@ echo "Build successful!"
 
 echo === TEST ON EXAMPLE.JIVE ===
 
-./test_lexer.out ../Jive_Programs/example.jive
+../build/jive ../Jive_Programs/example.jive
 ret_val=$?
 if [ $ret_val -ne 0 ]; then
-	echo ERROR: Lexer returned an error compiling simple.jive
+	echo ERROR: Compiler returned an error compiling example.jive
 	exit $ret_val
 fi
 
