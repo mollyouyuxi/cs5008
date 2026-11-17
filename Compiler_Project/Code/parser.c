@@ -54,7 +54,7 @@ struct AST_Node{
     union{
         AST_Fn_Data fn;
         AST_Binop_Data binop;
-        AST_List programs;
+        AST_List program;
         long int_value;
         AST_Node *return_expr;
     };
@@ -159,7 +159,7 @@ void Free_AST(AST_Node *node){
 
     switch (node->kind){
         case AST_PROGRAM:
-            Free_AST_List(&node->programs);
+            Free_AST_List(&node->program);
             break;
         case AST_FN:
             Free_AST_List(&node->fn.param);
@@ -338,7 +338,7 @@ Parse_Result parse_Program(Token_Array tokens){
     while(token->token_kind != TOKEN_EOF){
         AST_Node *node_fn = parse_Fn(&parser);
         // Preserve partial functions so Free_AST can clean them up.
-        AST_List_Append(&result.ast->programs, node_fn);
+        AST_List_Append(&result.ast->program, node_fn);
         if(parser.error_flag) break;
         token = Parser_Peek(&parser,0);
     }
@@ -355,7 +355,7 @@ void print_ast_with_indent(AST_Node *node, int depth){
     switch (node->kind){
         case AST_PROGRAM:
             printf("%*sprogram\n", 2 * depth, "");
-            for (AST_Node *fn = node->programs.head; fn != NULL; fn = fn->next){
+            for (AST_Node *fn = node->program.head; fn != NULL; fn = fn->next){
                 print_ast_with_indent(fn, depth + 1);
             }
             break;

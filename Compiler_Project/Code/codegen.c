@@ -47,27 +47,76 @@ bool generate_asm_for_fn(AST_Node *fn_node, FILE *out_file)
 	return true;
 }
 
+
+
+bool generate_asm_for_sm_instr(SM_Instr instr, FILE *out_file)
+{
+    switch(instr.kind){
+        case SM_FN:
+            fprintf(out_file, "%.*s:\n", Print_String(instr.fn_name));
+            break;
+        case SM_END_FN:
+            fprintf(out_file, "\n");
+            break;
+        case SM_PUSH:
+            // Loading through a register supports full-width integer literals.
+            fprintf(out_file, "    mov rax, %ld\n    push rax\n", instr.int_value);
+            break;
+        case SM_RETURN:
+            fprintf(out_file, "    pop rax\n    ret\n");
+            break;
+        case SM_ADD:
+        case SM_SUB:
+        case SM_MUL:
+        case SM_DIV:
+        case SM_MOD:
+            // The right operand is on top of the stack.
+            fprintf(out_file, "    pop rcx\n    pop rax\n");
+            switch(instr.kind){
+                case SM_ADD:
+                    fprintf(out_file, "    add rax, rcx\n");
+                    break;
+                case SM_SUB:
+                    fprintf(out_file, "    sub rax, rcx\n");
+                    break;
+                case SM_MUL:
+                    fprintf(out_file, "    imul rax, rcx\n");
+                    break;
+                case SM_DIV:
+                case SM_MOD:
+                    // Sign-extend rax into rdx:rax before signed division.
+                    fprintf(out_file, "    cqo\n    idiv rcx\n");
+                    if(instr.kind == SM_MOD){
+                        fprintf(out_file, "    mov rax, rdx\n");
+                    }
+                    break;
+                default:
+                    break;
+            }
+            fprintf(out_file, "    push rax\n");
+            break;
+        default:
+            fprintf(stderr, "ERROR: Unsupported stack-machine instruction %d.\n",
+                    instr.kind);
+            return false;
+    }
+    return ferror(out_file) == 0;
+}
+
 bool generate_asm(AST_Node *ast, FILE *out_file)
 {
-    if (ast == NULL)
-	{
-		printf("ERROR: Root AST node was NULL.\n");
-		return false;
-	}
+    if(out_file == NULL || sm_program.items == NULL || sm_program.count <= 0){
+        fprintf(stderr, "ERROR: Expected stack-machine instructions and an output file.\n");
+        return false;
+    }
 
-	if (ast->kind != AST_PROGRAM)
-	{
-		printf("ERROR: Root AST node was not PROGRAM. Got kind %s\n", ast_kind_as_cstr(ast->kind));
-		return false;
-	}
+    generate_preamble(out_file);
+
+    for(long i = 0; i < sm_program.count; i++){
+        if(!generate_asm_for_sm_instr(sm_program.items[i], out_file)){
+            return false;
+        }
+    }
 	
-	generate_preamble(out_file);
-	
-	for (AST_Node *fn_node = ast->programs.head; fn_node != NULL; fn_node = fn_node->next)
-	{
-		bool success = generate_asm_for_fn(fn_node, out_file);
-		if (!success) return false;
-	}
-	
-	return true;
+	return ferror(out_file) == 0;
 }
