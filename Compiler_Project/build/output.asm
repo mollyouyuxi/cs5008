@@ -7,5 +7,7 @@ _start:
     syscall
 
 main:
-mov rax, 42
-ret
+    push 42
+    pop rax
+    ret
+

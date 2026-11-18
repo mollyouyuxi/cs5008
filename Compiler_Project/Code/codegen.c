@@ -1,3 +1,4 @@
+#include <stdint.h>
 void generate_preamble(FILE *out_file)
 {
 	fprintf(out_file, "global _start\n");
@@ -59,8 +60,12 @@ bool generate_asm_for_sm_instr(SM_Instr instr, FILE *out_file)
             fprintf(out_file, "\n");
             break;
         case SM_PUSH:
-            // Loading through a register supports full-width integer literals.
-            fprintf(out_file, "    mov rax, %ld\n    push rax\n", instr.int_value);
+            if(instr.int_value >= INT32_MIN && instr.int_value <= INT32_MAX){
+                fprintf(out_file, "    push %ld\n", instr.int_value);
+            }else{
+                // x86-64 push immediates are limited to signed 32-bit values.
+                fprintf(out_file, "    mov rax, %ld\n    push rax\n", instr.int_value);
+            }
             break;
         case SM_RETURN:
             fprintf(out_file, "    pop rax\n    ret\n");
@@ -80,7 +85,7 @@ bool generate_asm_for_sm_instr(SM_Instr instr, FILE *out_file)
                     fprintf(out_file, "    sub rax, rcx\n");
                     break;
                 case SM_MUL:
-                    fprintf(out_file, "    imul rax, rcx\n");
+                    fprintf(out_file, "    imul rcx\n");
                     break;
                 case SM_DIV:
                 case SM_MOD:
@@ -103,7 +108,7 @@ bool generate_asm_for_sm_instr(SM_Instr instr, FILE *out_file)
     return ferror(out_file) == 0;
 }
 
-bool generate_asm(AST_Node *ast, FILE *out_file)
+bool generate_asm(SM_Instr_List sm_program, FILE *out_file)
 {
     if(out_file == NULL || sm_program.items == NULL || sm_program.count <= 0){
         fprintf(stderr, "ERROR: Expected stack-machine instructions and an output file.\n");

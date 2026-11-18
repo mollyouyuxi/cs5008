@@ -7,8 +7,9 @@
 #include "string.c"
 #include "lexer.c"
 #include "parser.c"
-#include "codegen.c"
 #include "stack_machine.c"
+#include "codegen.c"
+
 
 typedef struct Options{
     const char *out_file_name;
@@ -123,7 +124,7 @@ int main(int arg_count, const char **args)
 
 	bool test_sm = true;
 	if (test_sm) {
-		printf("Stack Machine output:\n");
+		printf("\nStack Machine output:\n");
 		Print_SM_Instr_List(&sm_program);
 	}
 
